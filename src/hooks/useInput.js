@@ -1,29 +1,61 @@
-import { useState } from "react";
+import { useState, useReducer } from "react";
 
-const useInput = (validFunc, onInput, onBlur) => {
-  const [inputValue, setInputValue] = useState("");
-  const [isTouched, setIsTouched] = useState(false);
+const initialInputState = {
+  value: "",
+  isTouched: false,
+};
 
-  const valueIsValid = validFunc(inputValue);
-  const hasError = !valueIsValid && isTouched;
+const inputStateReducer = (state, action) => {
+  switch (action.type) {
+    case "INPUT":
+      return { ...state, value: action.value };
+    case "BLUR":
+      return { ...state, isTouched: true };
+    case "RESET":
+      return initialInputState;
+    default:
+      return state;
+  }
+};
+
+const useInput = (validFunc, options = {}) => {
+  // const [inputValue, setInputValue] = useState("");
+  // const [isTouched, setIsTouched] = useState(false);
+
+  // const valueIsValid = validFunc(inputState.value);
+  // const hasError = !valueIsValid && inputState.isTouched;
+
+  const [inputState, dispatch] = useReducer(
+    inputStateReducer,
+    initialInputState
+  );
+
+  const valueIsValid = validFunc(inputState.value);
+  const hasError = !valueIsValid && inputState.isTouched;
 
   const inputChangeHandler = (e) => {
-    setInputValue(e.target.value);
-    typeof onInput === "function" && onInput();
+    options.beforeChange && options.beforeChange();
+    dispatch({ type: "INPUT", value: e.target.value });
+    // setInputValue(e.target.value);
+    options.afterChange && options.afterChange();
   };
 
   const inputBlurHandler = () => {
-    setIsTouched(true);
-    typeof onInput === "function" && onBlur();
+    options.beforeBlur && options.beforeBlur();
+    dispatch({ type: "BLUR" });
+
+    // setIsTouched(true);
+    options.afterBlur && options.afterBlur();
   };
 
   const reset = () => {
-    setInputValue("");
-    setIsTouched(false);
+    dispatch({ type: "RESET" });
+    // setInputValue("");
+    // setIsTouched(false);
   };
 
   return {
-    value: inputValue,
+    value: inputState.value,
     isValid: valueIsValid,
     hasError,
     inputChangeHandler,
