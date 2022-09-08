@@ -1,62 +1,56 @@
-import { useState, useReducer } from "react";
+import { useState, useEffect } from "react";
 
-const initialInputState = {
-  value: "",
-  isTouched: false,
+const initialOptions = {
+  required: true,
+  beforeChange: () => {},
+  afterChange: () => {},
+  validateOnBlur: null,
 };
 
-const inputStateReducer = (state, action) => {
-  switch (action.type) {
-    case "INPUT":
-      return { ...state, value: action.value };
-    case "BLUR":
-      return { ...state, isTouched: true };
-    case "RESET":
-      return initialInputState;
-    default:
-      return state;
-  }
-};
+const useInput = (validFunc = () => {}, options = { ...initialOptions }) => {
+  const [inputValue, setInputValue] = useState("");
+  const [isTouched, setIsTouched] = useState(false);
+  const [errorText, setErrorText] = useState("");
+  const isEmpty = inputValue.trim() === "";
+  const hasError = errorText !== "" && isTouched;
 
-const useInput = (validFunc, options = {}) => {
-  // const [inputValue, setInputValue] = useState("");
-  // const [isTouched, setIsTouched] = useState(false);
+  useEffect(() => {
+    if (isTouched) {
+      if (!options.validateOnBlur) {
+        validFunc(inputValue, setErrorText);
+        isEmpty &&
+          setErrorText(options.required ? "The field is required" : "");
+      }
+    }
+  }, [inputValue, validFunc, isTouched, options, isEmpty]);
 
-  // const valueIsValid = validFunc(inputState.value);
-  // const hasError = !valueIsValid && inputState.isTouched;
-
-  const [inputState, dispatch] = useReducer(
-    inputStateReducer,
-    initialInputState
-  );
-
-  const valueIsValid = validFunc(inputState.value);
-  const hasError = !valueIsValid && inputState.isTouched;
+  useEffect(() => {
+    console.log(errorText);
+  }, [errorText]);
 
   const inputChangeHandler = (e) => {
     options.beforeChange && options.beforeChange();
-    dispatch({ type: "INPUT", value: e.target.value });
-    // setInputValue(e.target.value);
+    setInputValue(e.target.value);
     options.afterChange && options.afterChange();
   };
 
   const inputBlurHandler = () => {
-    options.beforeBlur && options.beforeBlur();
-    dispatch({ type: "BLUR" });
-
-    // setIsTouched(true);
-    options.afterBlur && options.afterBlur();
+    if (options.validateOnBlur) {
+      options.validateOnBlur(inputValue, setErrorText);
+      isEmpty && setErrorText(options.required ? "The field is required" : "");
+    }
+    setIsTouched(true);
   };
 
   const reset = () => {
-    dispatch({ type: "RESET" });
-    // setInputValue("");
-    // setIsTouched(false);
+    setInputValue("");
+    setIsTouched(false);
+    errorText("");
   };
 
   return {
-    value: inputState.value,
-    isValid: valueIsValid,
+    value: inputValue,
+    errorText,
     hasError,
     inputChangeHandler,
     inputBlurHandler,
